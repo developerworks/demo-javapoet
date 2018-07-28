@@ -2,11 +2,9 @@ package com.example.service.impl;
 
 import com.example.entity.User;
 import com.example.service.UserService;
-import java.lang.Integer;
-import java.lang.Long;
-import java.lang.Override;
-import java.util.List;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService {
