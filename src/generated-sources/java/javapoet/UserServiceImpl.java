@@ -1,7 +1,6 @@
 package javapoet;
 
 import java.lang.Long;
-
 import org.springframework.stereotype.Service;
 
 @Service

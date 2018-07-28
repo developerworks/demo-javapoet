@@ -86,12 +86,9 @@ public class DemoJavapoetApplication {
         dataTypes.put("blob", "Blob");
 
         return args -> {
-            generateEntities();
-            Thread.sleep(3000);
-            generateInterfaces();
-            Thread.sleep(3000);
-            generateRepositories();
-            Thread.sleep(3000);
+//            generateEntities();
+//            generateInterfaces();
+//            generateRepositories();
             generateServiceImpls();
         };
     }
