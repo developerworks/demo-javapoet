@@ -71,27 +71,27 @@ public class DemoJavapoetApplication {
     @Bean
     CommandLineRunner commandLineRunner() {
 
-        dataTypes.put("bigint", "BigInteger");
-        dataTypes.put("datetime", "Timestamp");
-        dataTypes.put("timestamp", "Timestamp");
-        dataTypes.put("time", "Time");
-        dataTypes.put("date", "Date");
-        dataTypes.put("varchar", "String");
-        dataTypes.put("char", "String");
-        dataTypes.put("int", "Integer");
-        dataTypes.put("tinyint", "Byte");
-        dataTypes.put("smallint", "Short");
-        dataTypes.put("decimal", "BigDecimal");
-        dataTypes.put("double", "Double");
-        dataTypes.put("float", "Float");
-        dataTypes.put("binary", "Byte");
-        dataTypes.put("bit", "Boolean");
-        dataTypes.put("blob", "Blob");
+        dataTypes.put("bigint", "java.lang.Long");
+        dataTypes.put("datetime", "java.sql.Timestamp");
+        dataTypes.put("timestamp", "java.sql.Timestamp");
+        dataTypes.put("time", "java.sql.Time");
+        dataTypes.put("date", "java.sql.Date");
+        dataTypes.put("varchar", "java.lang.String");
+        dataTypes.put("char", "java.lang.String");
+        dataTypes.put("int", "java.lang.Integer");
+        dataTypes.put("tinyint", "java.lang.Byte");
+        dataTypes.put("smallint", "java.lang.Short");
+        dataTypes.put("decimal", "java.math.BigDecimal");
+        dataTypes.put("double", "java.lang.Double");
+        dataTypes.put("float", "java.lang.Float");
+        dataTypes.put("binary", "java.lang.Byte");
+        dataTypes.put("bit", "java.lang.Boolean");
+        dataTypes.put("blob", "java.sql.Blob");
 
         return args -> {
             getBaseTables();
             generateEntities();
-            generateInterfaces();
+            generateServices();
             generateRepositories();
             generateServiceImpls();
         };
@@ -99,36 +99,47 @@ public class DemoJavapoetApplication {
 
     private void generateEntities() {
         baseTables.forEach(item -> {
-            log.info("Table name: {}, type: {}", item.getTableName(), item.getTableType());
-            // 实体
-            TypeSpec entity = TypeSpec.classBuilder(StringUtils.capitalize(item.getTableName()))
-                .addField(
-                    FieldSpec.builder(String.class, "username", Modifier.PRIVATE)
-                        .addJavadoc("用户名\n")
-                        .build()
-
-                ).build();
             // 实体注解
             List<AnnotationSpec> annotationSpecList = createEntityAnnotations();
             // 实体字段
             List<FieldSpec> fieldSpecs = new ArrayList<>();
+            // 填充字段
             columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
-                log.info("- Column name: {}, column type: {}, data type: {} => {}, camelcase column name: {}",
-                    column.getColumnName(),
-                    column.getColumnType(),
-                    column.getDataType(),
-                    dataTypes.get(column.getDataType()),
-                    CaseUtils.toCamelCase(column.getColumnName(), false, '_')
-                );
-                FieldSpec fieldSpec = FieldSpec.builder(
-                    String.class,
-                    CaseUtils.toCamelCase(column.getColumnName(), false, '_'),
-                    Modifier.PRIVATE
-                ).build();
+                FieldSpec fieldSpec = null;
+                try {
+                    if ("id".equals(column.getColumnName())) {
+                        AnnotationSpec id = AnnotationSpec.builder(ClassName.get("javax.persistence", "Id")).build();
+                        AnnotationSpec generatedValue = AnnotationSpec
+                            .builder(ClassName.get("javax.persistence", "GeneratedValue"))
+                            .addMember("strategy", "$T.$L", Class.forName("javax.persistence.GenerationType"), "IDENTITY")
+                            .build();
+
+                        fieldSpec = FieldSpec
+                            .builder(
+                                Class.forName(dataTypes.get(column.getDataType())),
+                                CaseUtils.toCamelCase(column.getColumnName(), false, '_'),
+                                Modifier.PRIVATE
+                            )
+                            .addAnnotation(id)
+                            .addAnnotation(generatedValue)
+                            .build();
+                    } else {
+                        fieldSpec = FieldSpec.builder(
+                            Class.forName(dataTypes.get(column.getDataType())),
+                            CaseUtils.toCamelCase(column.getColumnName(), false, '_'),
+                            Modifier.PRIVATE
+                        ).build();
+                    }
+
+
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
                 fieldSpecs.add(fieldSpec);
             });
-            // 实体类
+            // JPA实体
             TypeSpec typeSpec = TypeSpec.classBuilder(StringUtils.capitalize(item.getTableName()))
+                .addJavadoc("Generated by javapeot\n")
                 .addAnnotations(annotationSpecList)
                 .addModifiers(Modifier.PUBLIC)
                 .addFields(fieldSpecs)
@@ -142,7 +153,7 @@ public class DemoJavapoetApplication {
         });
     }
 
-    private void generateInterfaces() {
+    private void generateServices() {
         baseTables.forEach(item -> {
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
@@ -226,6 +237,7 @@ public class DemoJavapoetApplication {
                 .addMethod(
                     MethodSpec.methodBuilder("get" + StringUtils.capitalize(item.getTableName()))
                         .addJavadoc("通过ID获取用户对象\n")
+                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(Long.class, "id")
 //                        .addStatement(StringUtils.capitalize(item.getTableName()) + " " + item.getTableName() + " = new " + StringUtils.capitalize(item.getTableName()) + "()")
@@ -245,6 +257,7 @@ public class DemoJavapoetApplication {
                     MethodSpec
                         .methodBuilder("update" + StringUtils.capitalize(item.getTableName()))
                         .addJavadoc("更新对象\n")
+                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(
                             className("entity", StringUtils.capitalize(item.getTableName())),
@@ -259,6 +272,7 @@ public class DemoJavapoetApplication {
                     MethodSpec
                         .methodBuilder("create" + StringUtils.capitalize(item.getTableName()))
                         .addJavadoc("创建对象\n")
+                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(
                             className("entity", StringUtils.capitalize(item.getTableName())),
@@ -273,10 +287,11 @@ public class DemoJavapoetApplication {
                     MethodSpec
                         .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()) + "s")
                         .addJavadoc("对象分页列表\n")
+                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(Integer.class, "page")
                         .addParameter(Integer.class, "size")
-                        .addStatement("return null" )
+                        .addStatement("return null")
                         .returns(
                             ParameterizedTypeName.get(
                                 ClassName.get("java.util", "List"),
@@ -326,6 +341,9 @@ public class DemoJavapoetApplication {
     }
 
 
+    /**
+     * Get base table from database
+     */
     private void getBaseTables() {
         baseTables = tablesRepository.fetchAll(databaseName, "BASE TABLE");
     }

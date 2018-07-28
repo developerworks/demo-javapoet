@@ -1,8 +1,7 @@
 package com.example.service;
 
 import com.example.entity.User;
-import java.lang.Integer;
-import java.lang.Long;
+
 import java.util.List;
 
 public interface UserService {
