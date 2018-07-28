@@ -24,5 +24,5 @@ public interface RoleService {
     /**
      * 对象分页列表
      */
-    List<Role> paginateRole(Integer page, Integer size);
+    List<Role> paginateRoles(Integer page, Integer size);
 }

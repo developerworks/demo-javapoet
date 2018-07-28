@@ -34,7 +34,7 @@ public class ConfigServiceImpl implements ConfigService {
     /**
      * 对象分页列表
      */
-    public List<Config> paginateConfig(Integer page, Integer size) {
-        return config;
+    public List<Config> paginateConfigs(Integer page, Integer size) {
+        return null;
     }
 }

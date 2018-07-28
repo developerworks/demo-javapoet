@@ -24,5 +24,5 @@ public interface ConfigService {
     /**
      * 对象分页列表
      */
-    List<Config> paginateConfig(Integer page, Integer size);
+    List<Config> paginateConfigs(Integer page, Integer size);
 }

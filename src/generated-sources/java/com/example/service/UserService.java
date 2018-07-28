@@ -24,5 +24,5 @@ public interface UserService {
     /**
      * 对象分页列表
      */
-    List<User> paginateUser(Integer page, Integer size);
+    List<User> paginateUsers(Integer page, Integer size);
 }

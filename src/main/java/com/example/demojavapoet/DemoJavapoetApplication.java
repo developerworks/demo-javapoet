@@ -186,7 +186,7 @@ public class DemoJavapoetApplication {
                 )
                 .addMethod(
                     MethodSpec
-                        .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()))
+                        .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()) + "s")
                         .addJavadoc("对象分页列表\n")
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(Integer.class, "page")
@@ -234,7 +234,7 @@ public class DemoJavapoetApplication {
                             item.getTableName(),
                             className("entity", StringUtils.capitalize(item.getTableName()))
 
-                            )
+                        )
                         .addStatement("return " + item.getTableName())
                         .returns(
                             className("entity", StringUtils.capitalize(item.getTableName()))
@@ -271,12 +271,12 @@ public class DemoJavapoetApplication {
                 )
                 .addMethod(
                     MethodSpec
-                        .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()))
+                        .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()) + "s")
                         .addJavadoc("对象分页列表\n")
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(Integer.class, "page")
                         .addParameter(Integer.class, "size")
-                        .addStatement("return " + item.getTableName())
+                        .addStatement("return null" )
                         .returns(
                             ParameterizedTypeName.get(
                                 ClassName.get("java.util", "List"),

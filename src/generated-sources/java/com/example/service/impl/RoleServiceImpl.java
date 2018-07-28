@@ -34,7 +34,7 @@ public class RoleServiceImpl implements RoleService {
     /**
      * 对象分页列表
      */
-    public List<Role> paginateRole(Integer page, Integer size) {
-        return role;
+    public List<Role> paginateRoles(Integer page, Integer size) {
+        return null;
     }
 }

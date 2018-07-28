@@ -34,7 +34,7 @@ public class UserServiceImpl implements UserService {
     /**
      * 对象分页列表
      */
-    public List<User> paginateUser(Integer page, Integer size) {
-        return user;
+    public List<User> paginateUsers(Integer page, Integer size) {
+        return null;
     }
 }
