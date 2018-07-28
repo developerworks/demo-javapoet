@@ -1,6 +1,7 @@
-package javapoet;
+package javapoet.service;
 
 import java.lang.Long;
+import javapoet.entity.Role;
 
 interface RoleService {
     /**

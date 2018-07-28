@@ -1,4 +1,4 @@
-package javapoet;
+package javapoet.entity;
 
 import java.lang.String;
 import javax.persistence.Entity;

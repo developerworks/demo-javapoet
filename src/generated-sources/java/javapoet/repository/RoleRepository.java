@@ -1,10 +1,11 @@
-package javapoet;
+package javapoet.repository;
 
 import java.lang.Long;
+import javapoet.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-interface ConfigRepository extends JpaRepository<Config, Long>, JpaSpecificationExecutor<Config> {
+interface RoleRepository extends JpaRepository<Role, Long>, JpaSpecificationExecutor<Role> {
 }

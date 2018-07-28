@@ -86,9 +86,9 @@ public class DemoJavapoetApplication {
         dataTypes.put("blob", "Blob");
 
         return args -> {
-//            generateEntities();
-//            generateInterfaces();
-//            generateRepositories();
+            generateEntities();
+            generateInterfaces();
+            generateRepositories();
             generateServiceImpls();
         };
     }
@@ -129,7 +129,7 @@ public class DemoJavapoetApplication {
                 .addModifiers(Modifier.PUBLIC)
                 .addFields(fieldSpecs)
                 .build();
-            JavaFile javaFile = JavaFile.builder(packageName, typeSpec).indent(INDENT).build();
+            JavaFile javaFile = JavaFile.builder(String.format("%s.entity", packageName), typeSpec).indent(INDENT).build();
             try {
                 javaFile.writeTo(resourcesDirectory);
             } catch (IOException e) {
@@ -149,7 +149,7 @@ public class DemoJavapoetApplication {
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(Long.class, "id")
                         .returns(
-                            getClassByName(item.getTableName())
+                            getClassByName("entity", item.getTableName())
                         )
                         .build()
                 )
@@ -159,11 +159,11 @@ public class DemoJavapoetApplication {
                         .addJavadoc("更新对象\n")
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(
-                            getClassByName(item.getTableName()),
+                            getClassByName("entity", item.getTableName()),
                             item.getTableName().toLowerCase()
                         )
                         .returns(
-                            getClassByName(item.getTableName())
+                            getClassByName("entity", item.getTableName())
                         ).build()
                 )
                 .addMethod(
@@ -172,16 +172,17 @@ public class DemoJavapoetApplication {
                         .addJavadoc("创建对象\n")
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(
-                            getClassByName(item.getTableName()),
+                            getClassByName("entity", item.getTableName()),
                             item.getTableName().toLowerCase()
                         )
                         .returns(
-                            getClassByName(item.getTableName())
+                            getClassByName("entity", item.getTableName())
                         ).build()
                 )
                 .build();
 
-            JavaFile javaFile1 = JavaFile.builder(packageName, typeSpec1)
+            JavaFile javaFile1 = JavaFile.builder(String.format("%s.service", packageName), typeSpec1)
+
                 .indent(INDENT)
                 .build();
 
@@ -199,7 +200,7 @@ public class DemoJavapoetApplication {
             TypeSpec typeSpec1 = TypeSpec
                 .classBuilder(StringUtils.capitalize(item.getTableName()) + "ServiceImpl")
                 .addSuperinterface(
-                    getClassByName(StringUtils.capitalize(item.getTableName()) + "Service")
+                    getClassByName("service", StringUtils.capitalize(item.getTableName()) + "Service")
                 )
                 .addAnnotation(createStereotypeAnnotation("Service"))
                 .addMethod(
@@ -207,10 +208,16 @@ public class DemoJavapoetApplication {
                         .addJavadoc("通过ID获取用户对象\n")
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(Long.class, "id")
-                        .addStatement(StringUtils.capitalize(item.getTableName()) + " " + item.getTableName() + " = new " + StringUtils.capitalize(item.getTableName()) + "()")
+//                        .addStatement(StringUtils.capitalize(item.getTableName()) + " " + item.getTableName() + " = new " + StringUtils.capitalize(item.getTableName()) + "()")
+                        .addStatement("$T $L = new $T()",
+                            getClassByName("entity", StringUtils.capitalize(item.getTableName())),
+                            item.getTableName(),
+                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
+
+                            )
                         .addStatement("return " + item.getTableName())
                         .returns(
-                            getClassByName(item.getTableName())
+                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
                         )
                         .build()
                 )
@@ -220,12 +227,12 @@ public class DemoJavapoetApplication {
                         .addJavadoc("更新对象\n")
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(
-                            getClassByName(item.getTableName()),
+                            getClassByName("entity", StringUtils.capitalize(item.getTableName())),
                             item.getTableName().toLowerCase()
                         )
                         .addStatement("return " + item.getTableName())
                         .returns(
-                            getClassByName(item.getTableName())
+                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
                         ).build()
                 )
                 .addMethod(
@@ -234,16 +241,16 @@ public class DemoJavapoetApplication {
                         .addJavadoc("创建对象\n")
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(
-                            getClassByName(item.getTableName()),
+                            getClassByName("entity", StringUtils.capitalize(item.getTableName())),
                             item.getTableName().toLowerCase()
                         )
                         .addStatement("return " + item.getTableName())
                         .returns(
-                            getClassByName(item.getTableName())
+                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
                         ).build()
                 )
                 .build();
-            JavaFile javaFile1 = JavaFile.builder(packageName, typeSpec1)
+            JavaFile javaFile1 = JavaFile.builder(String.format("%s.service.impl", packageName), typeSpec1)
                 .indent(INDENT)
                 .build();
 
@@ -262,16 +269,16 @@ public class DemoJavapoetApplication {
                 .interfaceBuilder(StringUtils.capitalize(item.getTableName()) + "Repository")
                 .addSuperinterface(ParameterizedTypeName.get(
                     JpaRepository.class,
-                    getClassByName(StringUtils.capitalize(item.getTableName())),
+                    getClassByName("entity", StringUtils.capitalize(item.getTableName())),
                     Long.class
                 ))
                 .addSuperinterface(ParameterizedTypeName.get(
                     JpaSpecificationExecutor.class,
-                    getClassByName(StringUtils.capitalize(item.getTableName()))
+                    getClassByName("entity", StringUtils.capitalize(item.getTableName()))
                 ))
                 .addAnnotation(createStereotypeAnnotation("Repository"))
                 .build();
-            JavaFile javaFile1 = JavaFile.builder(packageName, typeSpec1)
+            JavaFile javaFile1 = JavaFile.builder(String.format("%s.repository", packageName), typeSpec1)
                 .indent(INDENT)
                 .build();
             try {
@@ -282,10 +289,11 @@ public class DemoJavapoetApplication {
         });
     }
 
-    private Class<?> getClassByName(String tableName) {
+    private Class<?> getClassByName(String subPackageName, String tableName) {
         Class<?> class1 = null;
         try {
-            class1 = Class.forName(packageName + "." + StringUtils.capitalize(tableName));
+            String className = String.format("%s.%s.%s", packageName, subPackageName, StringUtils.capitalize(tableName));
+            class1 = Class.forName(className);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
