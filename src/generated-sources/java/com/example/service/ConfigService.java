@@ -1,7 +1,8 @@
 package com.example.service;
 
 import com.example.entity.Config;
-
+import java.lang.Integer;
+import java.lang.Long;
 import java.util.List;
 
 public interface ConfigService {
