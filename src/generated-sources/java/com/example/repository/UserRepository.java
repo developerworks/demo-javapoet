@@ -1,11 +1,13 @@
-package javapoet.repository;
+package com.example.repository;
+
+import com.example.entity.User;
 
 import java.lang.Long;
-import javapoet.entity.Config;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-interface ConfigRepository extends JpaRepository<Config, Long>, JpaSpecificationExecutor<Config> {
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
 }

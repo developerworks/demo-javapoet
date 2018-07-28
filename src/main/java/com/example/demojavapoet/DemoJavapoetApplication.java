@@ -25,7 +25,8 @@ public class DemoJavapoetApplication {
 
     private static final String INDENT = "    ";
     private static final File resourcesDirectory = new File("src/generated-sources/java");
-    private static final String packageName = "javapoet";
+    private static final String packageName = "com.example";
+    private static final String databaseName = "javapoet";
 
     private Map<String, String> dataTypes = new HashMap<>();
 
@@ -94,7 +95,7 @@ public class DemoJavapoetApplication {
     }
 
     private void generateEntities() {
-        tablesRepository.fetchAll(packageName, "BASE TABLE").forEach(item -> {
+        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
             log.info("Table name: {}, type: {}", item.getTableName(), item.getTableType());
             // 实体
             TypeSpec entity = TypeSpec.classBuilder(StringUtils.capitalize(item.getTableName()))
@@ -108,7 +109,7 @@ public class DemoJavapoetApplication {
             List<AnnotationSpec> annotationSpecList = createEntityAnnotations();
             // 实体字段
             List<FieldSpec> fieldSpecs = new ArrayList<>();
-            columnsRepository.fetchAll(packageName, item.getTableName()).forEach(column -> {
+            columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
                 log.info("- Column name: {}, column type: {}, data type: {} => {}, camelcase column name: {}",
                     column.getColumnName(),
                     column.getColumnType(),
@@ -139,10 +140,11 @@ public class DemoJavapoetApplication {
     }
 
     private void generateInterfaces() {
-        tablesRepository.fetchAll(packageName, "BASE TABLE").forEach(item -> {
+        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
                 .interfaceBuilder(StringUtils.capitalize(item.getTableName()) + "Service")
+                .addModifiers(Modifier.PUBLIC)
                 .addMethod(
                     MethodSpec.methodBuilder("get" + StringUtils.capitalize(item.getTableName()))
                         .addJavadoc("通过ID获取用户对象\n")
@@ -195,13 +197,14 @@ public class DemoJavapoetApplication {
     }
 
     private void generateServiceImpls() {
-        tablesRepository.fetchAll(packageName, "BASE TABLE").forEach(item -> {
+        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
                 .classBuilder(StringUtils.capitalize(item.getTableName()) + "ServiceImpl")
                 .addSuperinterface(
                     getClassByName("service", StringUtils.capitalize(item.getTableName()) + "Service")
                 )
+                .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(createStereotypeAnnotation("Service"))
                 .addMethod(
                     MethodSpec.methodBuilder("get" + StringUtils.capitalize(item.getTableName()))
@@ -263,10 +266,11 @@ public class DemoJavapoetApplication {
     }
 
     private void generateRepositories() {
-        tablesRepository.fetchAll(packageName, "BASE TABLE").forEach(item -> {
+        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
                 .interfaceBuilder(StringUtils.capitalize(item.getTableName()) + "Repository")
+                .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(ParameterizedTypeName.get(
                     JpaRepository.class,
                     getClassByName("entity", StringUtils.capitalize(item.getTableName())),

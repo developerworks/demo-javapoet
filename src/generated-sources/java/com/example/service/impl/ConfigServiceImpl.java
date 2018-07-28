@@ -1,12 +1,14 @@
-package javapoet.service.impl;
+package com.example.service.impl;
+
+import com.example.entity.Config;
+import com.example.service.ConfigService;
 
 import java.lang.Long;
-import javapoet.entity.Config;
-import javapoet.service.ConfigService;
+
 import org.springframework.stereotype.Service;
 
 @Service
-class ConfigServiceImpl implements ConfigService {
+public class ConfigServiceImpl implements ConfigService {
     /**
      * 通过ID获取用户对象
      */

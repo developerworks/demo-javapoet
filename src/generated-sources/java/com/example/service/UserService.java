@@ -1,9 +1,10 @@
-package javapoet.service;
+package com.example.service;
+
+import com.example.entity.User;
 
 import java.lang.Long;
-import javapoet.entity.User;
 
-interface UserService {
+public interface UserService {
     /**
      * 通过ID获取用户对象
      */

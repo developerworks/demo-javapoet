@@ -1,9 +1,10 @@
-package javapoet.service;
+package com.example.service;
+
+import com.example.entity.Config;
 
 import java.lang.Long;
-import javapoet.entity.Config;
 
-interface ConfigService {
+public interface ConfigService {
     /**
      * 通过ID获取用户对象
      */

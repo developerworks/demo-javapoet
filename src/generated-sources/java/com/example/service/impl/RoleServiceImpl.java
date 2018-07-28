@@ -1,12 +1,14 @@
-package javapoet.service.impl;
+package com.example.service.impl;
+
+import com.example.entity.Role;
+import com.example.service.RoleService;
 
 import java.lang.Long;
-import javapoet.entity.Role;
-import javapoet.service.RoleService;
+
 import org.springframework.stereotype.Service;
 
 @Service
-class RoleServiceImpl implements RoleService {
+public class RoleServiceImpl implements RoleService {
     /**
      * 通过ID获取用户对象
      */

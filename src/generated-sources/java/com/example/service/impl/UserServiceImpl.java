@@ -1,12 +1,14 @@
-package javapoet.service.impl;
+package com.example.service.impl;
+
+import com.example.entity.User;
+import com.example.service.UserService;
 
 import java.lang.Long;
-import javapoet.entity.User;
-import javapoet.service.UserService;
+
 import org.springframework.stereotype.Service;
 
 @Service
-class UserServiceImpl implements UserService {
+public class UserServiceImpl implements UserService {
     /**
      * 通过ID获取用户对象
      */

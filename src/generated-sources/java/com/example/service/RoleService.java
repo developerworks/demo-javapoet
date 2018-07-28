@@ -1,9 +1,10 @@
-package javapoet.service;
+package com.example.service;
+
+import com.example.entity.Role;
 
 import java.lang.Long;
-import javapoet.entity.Role;
 
-interface RoleService {
+public interface RoleService {
     /**
      * 通过ID获取用户对象
      */
