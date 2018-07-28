@@ -1,8 +1,9 @@
 package com.example.service;
 
 import com.example.entity.Role;
-
+import java.lang.Integer;
 import java.lang.Long;
+import java.util.List;
 
 public interface RoleService {
     /**
@@ -19,4 +20,9 @@ public interface RoleService {
      * 创建对象
      */
     Role createRole(Role role);
+
+    /**
+     * 对象分页列表
+     */
+    List<Role> paginateRole(Integer page, Integer size);
 }

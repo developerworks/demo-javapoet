@@ -1,8 +1,9 @@
 package com.example.service;
 
 import com.example.entity.User;
-
+import java.lang.Integer;
 import java.lang.Long;
+import java.util.List;
 
 public interface UserService {
     /**
@@ -19,4 +20,9 @@ public interface UserService {
      * 创建对象
      */
     User createUser(User user);
+
+    /**
+     * 对象分页列表
+     */
+    List<User> paginateUser(Integer page, Integer size);
 }

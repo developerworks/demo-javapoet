@@ -2,9 +2,9 @@ package com.example.service.impl;
 
 import com.example.entity.Config;
 import com.example.service.ConfigService;
-
+import java.lang.Integer;
 import java.lang.Long;
-
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -28,6 +28,13 @@ public class ConfigServiceImpl implements ConfigService {
      * 创建对象
      */
     public Config createConfig(Config config) {
+        return config;
+    }
+
+    /**
+     * 对象分页列表
+     */
+    public List<Config> paginateConfig(Integer page, Integer size) {
         return config;
     }
 }

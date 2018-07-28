@@ -2,9 +2,9 @@ package com.example.service.impl;
 
 import com.example.entity.Role;
 import com.example.service.RoleService;
-
+import java.lang.Integer;
 import java.lang.Long;
-
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -28,6 +28,13 @@ public class RoleServiceImpl implements RoleService {
      * 创建对象
      */
     public Role createRole(Role role) {
+        return role;
+    }
+
+    /**
+     * 对象分页列表
+     */
+    public List<Role> paginateRole(Integer page, Integer size) {
         return role;
     }
 }

@@ -2,7 +2,6 @@ package com.example.entity;
 
 import java.lang.String;
 import javax.persistence.Entity;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

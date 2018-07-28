@@ -1,5 +1,6 @@
 package com.example.demojavapoet;
 
+import com.example.demojavapoet.entity.VTables;
 import com.example.demojavapoet.repository.ColumnsRepository;
 import com.example.demojavapoet.repository.TablesRepository;
 import com.squareup.javapoet.*;
@@ -33,6 +34,7 @@ public class DemoJavapoetApplication {
 
     private TablesRepository tablesRepository;
     private ColumnsRepository columnsRepository;
+    private List<VTables> baseTables;
 
     @Autowired
     public void setTablesRepository(TablesRepository tablesRepository) {
@@ -87,6 +89,7 @@ public class DemoJavapoetApplication {
         dataTypes.put("blob", "Blob");
 
         return args -> {
+            getBaseTables();
             generateEntities();
             generateInterfaces();
             generateRepositories();
@@ -95,7 +98,7 @@ public class DemoJavapoetApplication {
     }
 
     private void generateEntities() {
-        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
+        baseTables.forEach(item -> {
             log.info("Table name: {}, type: {}", item.getTableName(), item.getTableType());
             // 实体
             TypeSpec entity = TypeSpec.classBuilder(StringUtils.capitalize(item.getTableName()))
@@ -140,7 +143,7 @@ public class DemoJavapoetApplication {
     }
 
     private void generateInterfaces() {
-        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
+        baseTables.forEach(item -> {
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
                 .interfaceBuilder(StringUtils.capitalize(item.getTableName()) + "Service")
@@ -151,7 +154,7 @@ public class DemoJavapoetApplication {
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(Long.class, "id")
                         .returns(
-                            getClassByName("entity", item.getTableName())
+                            className("entity", item.getTableName())
                         )
                         .build()
                 )
@@ -161,11 +164,11 @@ public class DemoJavapoetApplication {
                         .addJavadoc("更新对象\n")
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(
-                            getClassByName("entity", item.getTableName()),
+                            className("entity", item.getTableName()),
                             item.getTableName().toLowerCase()
                         )
                         .returns(
-                            getClassByName("entity", item.getTableName())
+                            className("entity", item.getTableName())
                         ).build()
                 )
                 .addMethod(
@@ -174,11 +177,25 @@ public class DemoJavapoetApplication {
                         .addJavadoc("创建对象\n")
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(
-                            getClassByName("entity", item.getTableName()),
+                            className("entity", item.getTableName()),
                             item.getTableName().toLowerCase()
                         )
                         .returns(
-                            getClassByName("entity", item.getTableName())
+                            className("entity", item.getTableName())
+                        ).build()
+                )
+                .addMethod(
+                    MethodSpec
+                        .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()))
+                        .addJavadoc("对象分页列表\n")
+                        .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                        .addParameter(Integer.class, "page")
+                        .addParameter(Integer.class, "size")
+                        .returns(
+                            ParameterizedTypeName.get(
+                                ClassName.get("java.util", "List"),
+                                ClassName.get(String.format("%s.%s", packageName, "entity"), StringUtils.capitalize(item.getTableName()))
+                            )
                         ).build()
                 )
                 .build();
@@ -197,12 +214,12 @@ public class DemoJavapoetApplication {
     }
 
     private void generateServiceImpls() {
-        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
+        baseTables.forEach(item -> {
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
                 .classBuilder(StringUtils.capitalize(item.getTableName()) + "ServiceImpl")
                 .addSuperinterface(
-                    getClassByName("service", StringUtils.capitalize(item.getTableName()) + "Service")
+                    className("service", StringUtils.capitalize(item.getTableName()) + "Service")
                 )
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(createStereotypeAnnotation("Service"))
@@ -213,14 +230,14 @@ public class DemoJavapoetApplication {
                         .addParameter(Long.class, "id")
 //                        .addStatement(StringUtils.capitalize(item.getTableName()) + " " + item.getTableName() + " = new " + StringUtils.capitalize(item.getTableName()) + "()")
                         .addStatement("$T $L = new $T()",
-                            getClassByName("entity", StringUtils.capitalize(item.getTableName())),
+                            className("entity", StringUtils.capitalize(item.getTableName())),
                             item.getTableName(),
-                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
+                            className("entity", StringUtils.capitalize(item.getTableName()))
 
                             )
                         .addStatement("return " + item.getTableName())
                         .returns(
-                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
+                            className("entity", StringUtils.capitalize(item.getTableName()))
                         )
                         .build()
                 )
@@ -230,12 +247,12 @@ public class DemoJavapoetApplication {
                         .addJavadoc("更新对象\n")
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(
-                            getClassByName("entity", StringUtils.capitalize(item.getTableName())),
+                            className("entity", StringUtils.capitalize(item.getTableName())),
                             item.getTableName().toLowerCase()
                         )
                         .addStatement("return " + item.getTableName())
                         .returns(
-                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
+                            className("entity", StringUtils.capitalize(item.getTableName()))
                         ).build()
                 )
                 .addMethod(
@@ -244,12 +261,27 @@ public class DemoJavapoetApplication {
                         .addJavadoc("创建对象\n")
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(
-                            getClassByName("entity", StringUtils.capitalize(item.getTableName())),
+                            className("entity", StringUtils.capitalize(item.getTableName())),
                             item.getTableName().toLowerCase()
                         )
                         .addStatement("return " + item.getTableName())
                         .returns(
-                            getClassByName("entity", StringUtils.capitalize(item.getTableName()))
+                            className("entity", StringUtils.capitalize(item.getTableName()))
+                        ).build()
+                )
+                .addMethod(
+                    MethodSpec
+                        .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()))
+                        .addJavadoc("对象分页列表\n")
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter(Integer.class, "page")
+                        .addParameter(Integer.class, "size")
+                        .addStatement("return " + item.getTableName())
+                        .returns(
+                            ParameterizedTypeName.get(
+                                ClassName.get("java.util", "List"),
+                                ClassName.get(String.format("%s.%s", packageName, "entity"), StringUtils.capitalize(item.getTableName()))
+                            )
                         ).build()
                 )
                 .build();
@@ -266,19 +298,19 @@ public class DemoJavapoetApplication {
     }
 
     private void generateRepositories() {
-        tablesRepository.fetchAll(databaseName, "BASE TABLE").forEach(item -> {
+        baseTables.forEach(item -> {
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
                 .interfaceBuilder(StringUtils.capitalize(item.getTableName()) + "Repository")
                 .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(ParameterizedTypeName.get(
                     JpaRepository.class,
-                    getClassByName("entity", StringUtils.capitalize(item.getTableName())),
+                    className("entity", StringUtils.capitalize(item.getTableName())),
                     Long.class
                 ))
                 .addSuperinterface(ParameterizedTypeName.get(
                     JpaSpecificationExecutor.class,
-                    getClassByName("entity", StringUtils.capitalize(item.getTableName()))
+                    className("entity", StringUtils.capitalize(item.getTableName()))
                 ))
                 .addAnnotation(createStereotypeAnnotation("Repository"))
                 .build();
@@ -293,7 +325,12 @@ public class DemoJavapoetApplication {
         });
     }
 
-    private Class<?> getClassByName(String subPackageName, String tableName) {
+
+    private void getBaseTables() {
+        baseTables = tablesRepository.fetchAll(databaseName, "BASE TABLE");
+    }
+
+    private Class<?> className(String subPackageName, String tableName) {
         Class<?> class1 = null;
         try {
             String className = String.format("%s.%s.%s", packageName, subPackageName, StringUtils.capitalize(tableName));
