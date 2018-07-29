@@ -111,7 +111,11 @@ public class DemoJavapoetApplication {
                         AnnotationSpec id = AnnotationSpec.builder(ClassName.get("javax.persistence", "Id")).build();
                         AnnotationSpec generatedValue = AnnotationSpec
                             .builder(ClassName.get("javax.persistence", "GeneratedValue"))
-                            .addMember("strategy", "$T.$L", Class.forName("javax.persistence.GenerationType"), "IDENTITY")
+//                            .addMember("strategy", "$T.$L", Class.forName("javax.persistence.GenerationType"), "IDENTITY")
+                            .addMember(
+                                "strategy",
+                                CodeBlock.builder().add("$T.IDENTITY", Class.forName("javax.persistence.GenerationType")).build()
+                            )
                             .build();
 
                         fieldSpec = FieldSpec
