@@ -1,6 +1,6 @@
-package com.example.service;
+package com.example.generated.service;
 
-import com.example.entity.User;
+import com.example.generated.entity.User;
 import java.lang.Exception;
 import java.lang.Integer;
 import java.lang.Long;

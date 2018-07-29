@@ -1,6 +1,6 @@
-package com.example.repository;
+package com.example.generated.repository;
 
-import com.example.entity.User;
+import com.example.generated.entity.User;
 import java.lang.Long;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

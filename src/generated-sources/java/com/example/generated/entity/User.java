@@ -1,4 +1,4 @@
-package com.example.entity;
+package com.example.generated.entity;
 
 import java.lang.Long;
 import java.lang.String;

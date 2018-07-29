@@ -30,7 +30,7 @@ public class DemoJavapoetApplication {
 
     private static final String INDENT = "    ";
     private static final File resourcesDirectory = new File("src/generated-sources/java");
-    private static final String packageName = "com.example";
+    private static final String packageName = "com.example.generated";
     private static final String databaseName = "javapoet";
 
     private Map<String, String> dataTypes = new HashMap<>();

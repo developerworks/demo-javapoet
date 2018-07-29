@@ -1,8 +1,8 @@
-package com.example.service.impl;
+package com.example.generated.service.impl;
 
-import com.example.entity.User;
-import com.example.repository.UserRepository;
-import com.example.service.UserService;
+import com.example.generated.entity.User;
+import com.example.generated.repository.UserRepository;
+import com.example.generated.service.UserService;
 import java.lang.Exception;
 import java.lang.Integer;
 import java.lang.Long;
