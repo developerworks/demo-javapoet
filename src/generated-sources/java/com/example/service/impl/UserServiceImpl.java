@@ -1,15 +1,26 @@
 package com.example.service.impl;
 
 import com.example.entity.User;
+import com.example.repository.UserRepository;
 import com.example.service.UserService;
+import java.lang.Exception;
 import java.lang.Integer;
 import java.lang.Long;
 import java.lang.Override;
+import java.lang.String;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserServiceImpl implements UserService {
+    private UserRepository userRepository;
+
+    @Autowired
+    public void setuserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     /**
      * 通过ID获取用户对象
      */
@@ -23,8 +34,11 @@ public class UserServiceImpl implements UserService {
      * 更新对象
      */
     @Override
-    public User updateUser(User user) {
-        return user;
+    public User updateUser(User user) throws Exception {
+        User userObject = userRepository.findById(user.getId()).orElseThrow(() -> new Exception("对象不存在"));
+        userObject.setName(user.getName());
+        userObject.setCreatedAt(user.getCreatedAt());
+        return userObject;
     }
 
     /**
@@ -32,14 +46,17 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public User createUser(User user) {
-        return user;
+        User userObject = new User();
+        userObject.setName(user.getName());
+        userObject.setCreatedAt(user.getCreatedAt());
+        return userObject;
     }
 
     /**
      * 对象分页列表
      */
     @Override
-    public List<User> paginateUsers(Integer page, Integer size) {
-        return null;
+    public List<User> paginateUsers(Integer page, Integer size, String sort, String[] sortby) {
+        return userRepository.findAll();
     }
 }

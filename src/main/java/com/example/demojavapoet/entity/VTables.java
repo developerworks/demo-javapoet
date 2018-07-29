@@ -1,6 +1,8 @@
 package com.example.demojavapoet.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Immutable;
 
 import javax.persistence.Column;
@@ -13,6 +15,8 @@ import java.sql.Timestamp;
 @Table(name = "v_tables", schema = "javapoet")
 @Immutable
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class VTables {
 
     @Id

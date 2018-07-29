@@ -1,6 +1,8 @@
 package com.example.demojavapoet.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Immutable;
 
 import javax.persistence.Column;
@@ -8,13 +10,13 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-
 @Entity
 @Table(name = "v_columns", schema = "javapoet")
 @Immutable
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class VColumns {
-
 
     @Id
     @Column(name = "id")

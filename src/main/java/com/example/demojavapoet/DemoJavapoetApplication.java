@@ -18,7 +18,11 @@ import org.springframework.util.StringUtils;
 import javax.lang.model.element.Modifier;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.IntStream;
 
 @SpringBootApplication
 @Slf4j
@@ -30,7 +34,6 @@ public class DemoJavapoetApplication {
     private static final String databaseName = "javapoet";
 
     private Map<String, String> dataTypes = new HashMap<>();
-
 
     private TablesRepository tablesRepository;
     private ColumnsRepository columnsRepository;
@@ -50,13 +53,11 @@ public class DemoJavapoetApplication {
         SpringApplication.run(DemoJavapoetApplication.class, args);
     }
 
-
     private List<AnnotationSpec> createEntityAnnotations() {
         AnnotationSpec annotationSpec = AnnotationSpec.builder(ClassName.get("javax.persistence", "Entity")).build();
         AnnotationSpec data = AnnotationSpec.builder(ClassName.get("lombok", "Data")).build();
         AnnotationSpec noArgsConstructor = AnnotationSpec.builder(ClassName.get("lombok", "NoArgsConstructor")).build();
         AnnotationSpec allArgsConstructor = AnnotationSpec.builder(ClassName.get("lombok", "AllArgsConstructor")).build();
-
 
         List<AnnotationSpec> annotationSpecList = new ArrayList<>();
         annotationSpecList.add(annotationSpec);
@@ -66,7 +67,6 @@ public class DemoJavapoetApplication {
 
         return annotationSpecList;
     }
-
 
     @Bean
     CommandLineRunner commandLineRunner() {
@@ -135,7 +135,6 @@ public class DemoJavapoetApplication {
                         ).build();
                     }
 
-
                 } catch (ClassNotFoundException e) {
                     e.printStackTrace();
                 }
@@ -182,6 +181,7 @@ public class DemoJavapoetApplication {
                             className("entity", item.getTableName()),
                             item.getTableName().toLowerCase()
                         )
+                        .addException(Exception.class)
                         .returns(
                             className("entity", item.getTableName())
                         ).build()
@@ -206,6 +206,8 @@ public class DemoJavapoetApplication {
                         .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                         .addParameter(Integer.class, "page")
                         .addParameter(Integer.class, "size")
+                        .addParameter(String.class, "sort")
+                        .addParameter(String[].class, "sortby")
                         .returns(
                             ParameterizedTypeName.get(
                                 ClassName.get("java.util", "List"),
@@ -230,18 +232,111 @@ public class DemoJavapoetApplication {
 
     private void generateServiceImpls() {
         baseTables.forEach(item -> {
+
+            String repositoryFieldName = CaseUtils.toCamelCase(String.format("%s_repository", item.getTableName()), false, '_');
+            Class<?> repositoryClass = className("repository", item.getTableName() + "Repository");
+
+            // 更新方法
+            MethodSpec.Builder updateBuilder = MethodSpec
+                .methodBuilder("update" + StringUtils.capitalize(item.getTableName()))
+                .addJavadoc("更新对象\n")
+                .addAnnotation(annotationOverride())
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(
+                    className("entity", StringUtils.capitalize(item.getTableName())),
+                    item.getTableName().toLowerCase()
+                )
+                .addStatement(
+                    "$T $LObject = $L.findById($L.getId()).orElseThrow(() -> new Exception($S))",
+                    className("entity", item.getTableName()),
+                    item.getTableName(),
+                    repositoryFieldName,
+                    item.getTableName(),
+                    "对象不存在"
+                )
+                .addException(Exception.class)
+
+                .returns(
+                    className("entity", StringUtils.capitalize(item.getTableName()))
+                );
+
+            columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
+                if (!"id".equals(column.getColumnName())) {
+                    updateBuilder.addStatement(
+                        "$LObject.set$L($L.get$L())",
+                        item.getTableName(),
+                        CaseUtils.toCamelCase(column.getColumnName(), true, '_'),
+                        item.getTableName(),
+                        CaseUtils.toCamelCase(column.getColumnName(), true, '_')
+                    );
+                }
+
+            });
+            updateBuilder.addStatement("return $LObject", item.getTableName());
+            MethodSpec updateObjectMethod = updateBuilder.build();
+
+            // 创建方法
+            MethodSpec.Builder createBuilder = MethodSpec
+                .methodBuilder("create" + StringUtils.capitalize(item.getTableName()))
+                .addJavadoc("创建对象\n")
+                .addAnnotation(annotationOverride())
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(
+                    className("entity", StringUtils.capitalize(item.getTableName())),
+                    item.getTableName().toLowerCase()
+                )
+                .addStatement(
+                    "$T $LObject = new $T()",
+                    className("entity", item.getTableName()),
+                    item.getTableName(),
+                    className("entity", item.getTableName())
+                )
+                .returns(
+                    className("entity", StringUtils.capitalize(item.getTableName()))
+                );
+
+            columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
+                if (!"id".equals(column.getColumnName())) {
+                    createBuilder.addStatement(
+                        "$LObject.set$L($L.get$L())",
+                        item.getTableName(),
+                        CaseUtils.toCamelCase(column.getColumnName(), true, '_'),
+                        item.getTableName(),
+                        CaseUtils.toCamelCase(column.getColumnName(), true, '_')
+                    );
+                }
+            });
+            createBuilder.addStatement("return $LObject", item.getTableName());
+            MethodSpec createObjectMethod = createBuilder.build();
+
             // 服务接口
             TypeSpec typeSpec1 = TypeSpec
                 .classBuilder(StringUtils.capitalize(item.getTableName()) + "ServiceImpl")
                 .addSuperinterface(
                     className("service", StringUtils.capitalize(item.getTableName()) + "Service")
                 )
+                .addField(
+                    FieldSpec.builder(
+                        className("repository", item.getTableName() + "Repository"),
+                        repositoryFieldName,
+                        Modifier.PRIVATE
+                    ).build()
+                )
+                .addMethod(
+                    MethodSpec
+                        .methodBuilder("set" + repositoryFieldName)
+                        .addAnnotation(annotationAutowired())
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter(repositoryClass, repositoryFieldName)
+                        .addStatement("this.$L = $L", repositoryFieldName, repositoryFieldName)
+                        .build()
+                )
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(createStereotypeAnnotation("Service"))
                 .addMethod(
                     MethodSpec.methodBuilder("get" + StringUtils.capitalize(item.getTableName()))
                         .addJavadoc("通过ID获取用户对象\n")
-                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
+                        .addAnnotation(annotationOverride())
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(Long.class, "id")
 //                        .addStatement(StringUtils.capitalize(item.getTableName()) + " " + item.getTableName() + " = new " + StringUtils.capitalize(item.getTableName()) + "()")
@@ -257,45 +352,19 @@ public class DemoJavapoetApplication {
                         )
                         .build()
                 )
-                .addMethod(
-                    MethodSpec
-                        .methodBuilder("update" + StringUtils.capitalize(item.getTableName()))
-                        .addJavadoc("更新对象\n")
-                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
-                        .addModifiers(Modifier.PUBLIC)
-                        .addParameter(
-                            className("entity", StringUtils.capitalize(item.getTableName())),
-                            item.getTableName().toLowerCase()
-                        )
-                        .addStatement("return " + item.getTableName())
-                        .returns(
-                            className("entity", StringUtils.capitalize(item.getTableName()))
-                        ).build()
-                )
-                .addMethod(
-                    MethodSpec
-                        .methodBuilder("create" + StringUtils.capitalize(item.getTableName()))
-                        .addJavadoc("创建对象\n")
-                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
-                        .addModifiers(Modifier.PUBLIC)
-                        .addParameter(
-                            className("entity", StringUtils.capitalize(item.getTableName())),
-                            item.getTableName().toLowerCase()
-                        )
-                        .addStatement("return " + item.getTableName())
-                        .returns(
-                            className("entity", StringUtils.capitalize(item.getTableName()))
-                        ).build()
-                )
+                .addMethod(updateObjectMethod)
+                .addMethod(createObjectMethod)
                 .addMethod(
                     MethodSpec
                         .methodBuilder("paginate" + StringUtils.capitalize(item.getTableName()) + "s")
                         .addJavadoc("对象分页列表\n")
-                        .addAnnotation(AnnotationSpec.builder(Override.class).build())
+                        .addAnnotation(annotationOverride())
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(Integer.class, "page")
                         .addParameter(Integer.class, "size")
-                        .addStatement("return null")
+                        .addParameter(String.class, "sort")
+                        .addParameter(String[].class, "sortby")
+                        .addStatement("return $L.findAll()", repositoryFieldName)
                         .returns(
                             ParameterizedTypeName.get(
                                 ClassName.get("java.util", "List"),
@@ -344,7 +413,6 @@ public class DemoJavapoetApplication {
         });
     }
 
-
     /**
      * Get base table from database
      */
@@ -365,5 +433,28 @@ public class DemoJavapoetApplication {
 
     private AnnotationSpec createStereotypeAnnotation(String annotationName) {
         return AnnotationSpec.builder(ClassName.get("org.springframework.stereotype", annotationName)).build();
+    }
+
+    /**
+     * Lambda 表达式
+     *
+     * @return {@link CodeBlock}
+     */
+    private CodeBlock generateLambda() {
+        return CodeBlock
+            .builder()
+            .addStatement("$T<$T> names = new $T<>()", List.class, String.class, ArrayList.class)
+            .addStatement("$T.range($L, $L).forEach(i -> names.add(name))", IntStream.class, 0, 10)
+            .addStatement("names.forEach(System.out::println)")
+            .build();
+    }
+
+    private AnnotationSpec annotationAutowired() {
+        return AnnotationSpec.builder(ClassName.get("org.springframework.beans.factory.annotation", "Autowired"))
+            .build();
+    }
+
+    private AnnotationSpec annotationOverride() {
+        return AnnotationSpec.builder(Override.class).build();
     }
 }

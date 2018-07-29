@@ -1,8 +1,10 @@
 package com.example.service;
 
 import com.example.entity.User;
+import java.lang.Exception;
 import java.lang.Integer;
 import java.lang.Long;
+import java.lang.String;
 import java.util.List;
 
 public interface UserService {
@@ -14,7 +16,7 @@ public interface UserService {
     /**
      * 更新对象
      */
-    User updateUser(User user);
+    User updateUser(User user) throws Exception;
 
     /**
      * 创建对象
@@ -24,5 +26,5 @@ public interface UserService {
     /**
      * 对象分页列表
      */
-    List<User> paginateUsers(Integer page, Integer size);
+    List<User> paginateUsers(Integer page, Integer size, String sort, String[] sortby);
 }
