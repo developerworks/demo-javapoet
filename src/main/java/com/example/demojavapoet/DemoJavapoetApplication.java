@@ -71,6 +71,7 @@ public class DemoJavapoetApplication {
     @Bean
     CommandLineRunner commandLineRunner() {
 
+        // Mysql to Java
         dataTypes.put("bigint", "java.lang.Long");
         dataTypes.put("datetime", "java.sql.Timestamp");
         dataTypes.put("timestamp", "java.sql.Timestamp");
@@ -88,12 +89,25 @@ public class DemoJavapoetApplication {
         dataTypes.put("bit", "java.lang.Boolean");
         dataTypes.put("blob", "java.sql.Blob");
 
+        // FIXME:有依赖关系, Service 类中依赖实体类, 需要CLASSPATH中存在对应的 $Type.class 文件才能生成服务类.
+        // FIXME:服务实现依赖服务接口
+        // FIXME:仓库类依赖实体类
         return args -> {
+            // 获取基础表
             getBaseTables();
+            // 生成实体
             generateEntities();
+            // todo: 生成 Dto 数据传输对象
+            // 生成服务接口
             generateServices();
+            // 生成数据访问接口
             generateRepositories();
+            // 生成服务实现类
+            // todo: 生成动态分页查询代码
             generateServiceImpls();
+            // TODO: 生成 Webflux Rest Api 控制器类
+            // TODO: 生成测试代码
+            // TODO: 生成 Ant design CRUD 代码(PC端和移动端)
         };
     }
 
