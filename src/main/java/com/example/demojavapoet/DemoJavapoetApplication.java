@@ -471,24 +471,16 @@ public class DemoJavapoetApplication {
         return AnnotationSpec.builder(ClassName.get("javax.persistence", "Entity")).build();
     }
 
-    private AnnotationSpec createLombokDataAnnotation() {
-        return AnnotationSpec.builder(ClassName.get("lombok", "Data")).build();
-    }
-
-    private AnnotationSpec createLombokNoArgsConstructorAnnotation() {
-        return AnnotationSpec.builder(ClassName.get("lombok", "NoArgsConstructor")).build();
-    }
-
-    private AnnotationSpec createLombokAllArgsConstructorAnnotation() {
-        return AnnotationSpec.builder(ClassName.get("lombok", "AllArgsConstructor")).build();
+    private AnnotationSpec createLombokAnnotation(String simpleName) {
+        return AnnotationSpec.builder(ClassName.get("lombok", "")).build();
     }
 
     private List<AnnotationSpec> createEntityAnnotations() {
         List<AnnotationSpec> annotationSpecList = new ArrayList<>();
         annotationSpecList.add(createJpaEntityAnnotation());
-        annotationSpecList.add(createLombokDataAnnotation());
-        annotationSpecList.add(createLombokNoArgsConstructorAnnotation());
-        annotationSpecList.add(createLombokAllArgsConstructorAnnotation());
+        annotationSpecList.add(createLombokAnnotation("Data"));
+        annotationSpecList.add(createLombokAnnotation("NoArgsConstructor"));
+        annotationSpecList.add(createLombokAnnotation("AllArgsConstructor"));
 
         return annotationSpecList;
     }
