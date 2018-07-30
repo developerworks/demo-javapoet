@@ -472,7 +472,7 @@ public class DemoJavapoetApplication {
     }
 
     private AnnotationSpec createLombokAnnotation(String simpleName) {
-        return AnnotationSpec.builder(ClassName.get("lombok", "")).build();
+        return AnnotationSpec.builder(ClassName.get("lombok", simpleName)).build();
     }
 
     private List<AnnotationSpec> createEntityAnnotations() {
