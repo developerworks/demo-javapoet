@@ -13,7 +13,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.util.StringUtils;
 
 import javax.lang.model.element.Modifier;
 import java.io.File;
@@ -71,6 +70,7 @@ public class DemoJavapoetApplication {
     @Bean
     CommandLineRunner commandLineRunner() {
 
+        // Mysql to Java
         dataTypes.put("bigint", "java.lang.Long");
         dataTypes.put("binary", "java.lang.Byte");
         dataTypes.put("bit", "java.lang.Boolean");
@@ -90,12 +90,25 @@ public class DemoJavapoetApplication {
         dataTypes.put("tinyint", "java.lang.Byte");
         dataTypes.put("varchar", "java.lang.String");
 
+        // FIXME:有依赖关系, Service 类中依赖实体类, 需要CLASSPATH中存在对应的 $Type.class 文件才能生成服务类.
+        // FIXME:服务实现依赖服务接口
+        // FIXME:仓库类依赖实体类
         return args -> {
+            // 获取基础表
             getBaseTables();
+            // 生成实体
             generateEntities();
+            // todo: 生成 Dto 数据传输对象
+            // 生成服务接口
             generateServices();
+            // 生成数据访问接口
             generateRepositories();
+            // 生成服务实现类
+            // todo: 生成动态分页查询代码
             generateServiceImpls();
+            // TODO: 生成 Webflux Rest Api 控制器类
+            // TODO: 生成测试代码
+            // TODO: 生成 Ant design CRUD 代码(PC端和移动端)
         };
     }
 
@@ -144,6 +157,7 @@ public class DemoJavapoetApplication {
                 fieldSpecs.add(fieldSpec);
             });
             // JPA实体
+            // TODO: Use google case formatter to convert snake case to camel case
             TypeSpec typeSpec = TypeSpec.classBuilder(
                 CaseUtils.toCamelCase(item.getTableName(), true, '_')
             )
@@ -166,7 +180,7 @@ public class DemoJavapoetApplication {
             // 服务接口
             String entityName = CaseUtils.toCamelCase(item.getTableName(), true, '_');
             TypeSpec typeSpec1 = TypeSpec
-                .interfaceBuilder( entityName + "Service")
+                .interfaceBuilder(entityName + "Service")
                 .addModifiers(Modifier.PUBLIC)
                 .addMethod(
                     MethodSpec.methodBuilder("get" + entityName)
