@@ -6,13 +6,19 @@ import com.example.demojavapoet.repository.TablesRepository;
 import com.squareup.javapoet.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.CaseUtils;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.util.StringUtils;
 
 import javax.lang.model.element.Modifier;
 import java.io.File;
@@ -25,7 +31,7 @@ import java.util.stream.IntStream;
 
 @SpringBootApplication
 @Slf4j
-public class DemoJavapoetApplication {
+public class DemoJavapoetApplication implements ApplicationContextAware {
 
     private static final String INDENT = "    ";
     private static final File resourcesDirectory = new File("src/generated-sources/java");
@@ -38,6 +44,8 @@ public class DemoJavapoetApplication {
     private ColumnsRepository columnsRepository;
     private List<VTables> baseTables;
 
+    private ApplicationContext applicationContext;
+
     @Autowired
     public void setTablesRepository(TablesRepository tablesRepository) {
         this.tablesRepository = tablesRepository;
@@ -49,7 +57,9 @@ public class DemoJavapoetApplication {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(DemoJavapoetApplication.class, args);
+        ConfigurableApplicationContext ctx = new SpringApplicationBuilder(DemoJavapoetApplication.class)
+            .run();
+//        SpringApplication.run(DemoJavapoetApplication.class, args);
     }
 
     @Bean
@@ -85,15 +95,20 @@ public class DemoJavapoetApplication {
             generateEntities();
             // todo: 生成 Dto 数据传输对象
             // 生成服务接口
-//            generateServices();
+            generateServices();
             // 生成数据访问接口
-//            generateRepositories();
+            generateRepositories();
             // 生成服务实现类
             // todo: 生成动态分页查询代码
 //            generateServiceImpls();
             // TODO: 生成 Webflux Rest Api 控制器类
             // TODO: 生成测试代码
             // TODO: 生成 Ant design CRUD 代码(PC端和移动端)
+
+            generateControllers();
+
+            SpringApplication.exit(this.applicationContext, () -> 0);
+
         };
     }
 
@@ -427,6 +442,67 @@ public class DemoJavapoetApplication {
         });
     }
 
+    private void generateControllers() {
+        baseTables.forEach(item -> {
+            String entityName = CaseUtils.toCamelCase(item.getTableName(), true, '_');
+            // 服务接口
+            TypeSpec.Builder controllerBuilder = TypeSpec
+                .classBuilder(entityName + "Controller")
+                .addAnnotation(annotationRestController())
+                .addAnnotation(annotationControllerMapping("RequestMapping", "/" + item.getTableName()))
+
+
+                .addModifiers(Modifier.PUBLIC);
+
+            controllerBuilder.addMethod(
+                MethodSpec.methodBuilder("create" + StringUtils.capitalize(entityName))
+                    .addAnnotation(annotationControllerMapping("PostMapping", null))
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(className("entity", StringUtils.capitalize(item.getTableName())), item.getTableName() + "Dto")
+                    .returns(
+                        ParameterizedTypeName.get(
+                            ClassName.get("reactor.core.publisher", "Mono"),
+                            ClassName.get(String.format("%s.%s", packageName, "entity"), entityName)
+                        )
+                    )
+                    .addStatement(
+                        "$T $L = new $T()",
+                        className("entity", StringUtils.capitalize(item.getTableName())),
+                        item.getTableName(),
+                        className("entity", StringUtils.capitalize(item.getTableName()))
+                    )
+                    .addStatement("return $T.just($L)", ClassName.get("reactor.core.publisher", "Mono"), item.getTableName())
+                    .build()
+            );
+//            controllerBuilder.addMethod(
+//                MethodSpec.methodBuilder("delete" + StringUtils.capitalize(entityName))
+//                    .addAnnotation(annotationControllerMapping("DeleteMapping"))
+//                    .build()
+//            );
+//            controllerBuilder.addMethod(
+//                MethodSpec.methodBuilder("update" + StringUtils.capitalize(entityName))
+//                    .addAnnotation(annotationControllerMapping("PutMapping"))
+//                    .build()
+//            );
+//            controllerBuilder.addMethod(
+//                MethodSpec.methodBuilder("get" + StringUtils.capitalize(entityName))
+//                    .addAnnotation(annotationControllerMapping("GetMapping"))
+//                    .build()
+//            );
+
+            TypeSpec typeSpec = controllerBuilder.build();
+
+            JavaFile javaFile1 = JavaFile.builder(String.format("%s.controller", packageName), typeSpec)
+                .indent(INDENT)
+                .build();
+            try {
+                javaFile1.writeTo(resourcesDirectory);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     /**
      * Get base table from database
      */
@@ -517,5 +593,26 @@ public class DemoJavapoetApplication {
 
     private AnnotationSpec annotationOverride() {
         return AnnotationSpec.builder(Override.class).build();
+    }
+
+
+    private AnnotationSpec annotationRestController() {
+        return AnnotationSpec.builder(ClassName.get("org.springframework.web.bind.annotation", "RestController")).build();
+    }
+
+
+    private AnnotationSpec annotationControllerMapping(String simpleName, String path) {
+        AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.get("org.springframework.web.bind.annotation", simpleName));
+
+        if (null != path) {
+            builder.addMember("value", "$S", path);
+
+        }
+        return builder.build();
+    }
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
     }
 }
