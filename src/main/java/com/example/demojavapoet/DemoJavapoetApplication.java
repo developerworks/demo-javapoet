@@ -448,6 +448,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
     private void generateControllers() {
         baseTables.forEach(item -> {
             String entityName = CaseUtils.toCamelCase(item.getTableName(), true, '_');
+            log.info("Controller name: {}", entityName + "Controller");
             String repositoryFieldName = CaseUtils.toCamelCase(String.format("%s_repository", item.getTableName()), false, '_');
             Class<?> repositoryClass = className("repository", item.getTableName() + "_repository");
 
@@ -474,7 +475,6 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                         .build()
                 )
                 .addModifiers(Modifier.PUBLIC);
-
 
             MethodSpec.Builder createBuilder = MethodSpec.methodBuilder("create" + toCamelCase(entityName))
                 .addAnnotation(annotationControllerMapping("PostMapping", null))
@@ -510,7 +510,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
 
             createBuilder
                 .addStatement("$T saved = $L.save($L)",
-                    className("entity", entityName),
+                    className("entity", item.getTableName()),
                     repositoryFieldName,
                     item.getTableName()
                 )
@@ -569,7 +569,6 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
 
             // JSON更新(API)
 
-
             MethodSpec.Builder updateBuilder = MethodSpec.methodBuilder("update" + StringUtils.capitalize(entityName))
                 .addJavadoc("API更新方法\n")
                 .addModifiers(Modifier.PUBLIC)
@@ -580,32 +579,35 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                         ClassName.get(String.format("%s.%s", packageName, "entity"), entityName)
                     )
                 )
-                .addParameter(className("entity", StringUtils.capitalize(item.getTableName())), item.getTableName() + "Dto")
+                .addParameter(
+                    className("entity", item.getTableName()),
+                    toCamelCaseFirstLower(item.getTableName()) + "Dto"
+                )
                 .addException(Exception.class)
                 .addStatement(
                     "$T $L = $L.findById($L).orElseThrow(() -> new Exception($S))",
                     className("entity", item.getTableName()),
-                    item.getTableName(),
+                    toCamelCaseFirstLower(item.getTableName()),
                     repositoryFieldName,
-                    item.getTableName() + "Dto.getId()",
+                    toCamelCaseFirstLower(item.getTableName()) + "Dto.getId()",
                     "要更新的对象不存在或者已经被删除"
                 );
             columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
                 if (!"id".equals(column.getColumnName())) {
                     updateBuilder.addStatement(
                         "$L.set$L($L.get$L())",
-                        item.getTableName(),
+                        toCamelCaseFirstLower(item.getTableName()),
                         toCamelCase(column.getColumnName()),
-                        item.getTableName() + "Dto",
+                        toCamelCaseFirstLower(item.getTableName()) + "Dto",
                         toCamelCase(column.getColumnName())
                     );
                 }
             });
 
             updateBuilder.addStatement("$T saved = $L.save($L)",
-                className("entity", entityName),
+                className("entity", item.getTableName()),
                 repositoryFieldName,
-                item.getTableName()
+                toCamelCaseFirstLower(item.getTableName())
             );
             updateBuilder.addStatement("return $T.just($L)",
                 ClassName.get("reactor.core.publisher", "Mono"),
@@ -740,11 +742,9 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
         return AnnotationSpec.builder(Override.class).build();
     }
 
-
     private AnnotationSpec annotationRestController() {
         return AnnotationSpec.builder(ClassName.get("org.springframework.web.bind.annotation", "RestController")).build();
     }
-
 
     private AnnotationSpec annotationControllerMapping(String simpleName, String path) {
         AnnotationSpec.Builder builder = AnnotationSpec.builder(ClassName.get("org.springframework.web.bind.annotation", simpleName));
@@ -781,6 +781,10 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
 //    }
     private String toCamelCase(String name) {
         return CaseUtils.toCamelCase(name, true, '_');
+    }
+
+    private String toCamelCaseFirstLower(String name) {
+        return CaseUtils.toCamelCase(name, false, '_');
     }
 
     private AnnotationSpec annotationSpecPathVariable() {
