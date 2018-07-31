@@ -8,8 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -44,5 +46,28 @@ public class UserController {
         User user = userRepository.findById(id).orElseThrow(() -> new Exception("对象不存在"));
         userRepository.delete(user);
         return Mono.just(user);
+    }
+
+    /**
+     * API更新方法
+     */
+    @PutMapping
+    public Mono<User> updateUser(User userDto) throws Exception {
+        User user = userRepository.findById(userDto.getId()).orElseThrow(() -> new Exception("要更新的对象不存在或者已经被删除"));
+        user.setName(userDto.getName());
+        user.setCreatedAt(userDto.getCreatedAt());
+        User saved = userRepository.save(user);
+        return Mono.just(saved);
+    }
+
+    /**
+     * HTML表单更新方法
+     */
+    @PutMapping("/{id}")
+    public void updateUser(@PathVariable Long id) {
+    }
+
+    @GetMapping("/{id}")
+    void getUser() {
     }
 }

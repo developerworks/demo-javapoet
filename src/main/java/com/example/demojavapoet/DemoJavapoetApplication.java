@@ -528,10 +528,8 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                 controllerBuilder.addMethod(
                     MethodSpec.methodBuilder("delete" + toCamelCase(entityName))
                         .addAnnotation(annotationControllerMapping("DeleteMapping", "/{id}"))
-                        // @Transactional(propagation = Propagation.REQUIRED)
                         .addAnnotation(
                             AnnotationSpec.builder(ClassName.get("org.springframework.transaction.annotation", "Transactional"))
-//                                .addMember("propagation", "$L.REQUIRED", "Propagation.REQUIRED")
                                 .addMember(
                                     "propagation",
                                     CodeBlock.builder().add("$T.REQUIRED", Class.forName("org.springframework.transaction.annotation.Propagation")).build()
@@ -561,22 +559,81 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                         .addStatement("$L.delete($L)", repositoryFieldName, item.getTableName())
                         .addStatement("return $T.just($L)",
                             ClassName.get("reactor.core.publisher", "Mono"),
-                            item.getTableName()                    )
+                            item.getTableName()
+                        )
                         .build()
                 );
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             }
-//            controllerBuilder.addMethod(
-//                MethodSpec.methodBuilder("update" + StringUtils.capitalize(entityName))
-//                    .addAnnotation(annotationControllerMapping("PutMapping"))
-//                    .build()
-//            );
-//            controllerBuilder.addMethod(
-//                MethodSpec.methodBuilder("get" + StringUtils.capitalize(entityName))
-//                    .addAnnotation(annotationControllerMapping("GetMapping"))
-//                    .build()
-//            );
+
+            // JSON更新(API)
+
+
+            MethodSpec.Builder updateBuilder = MethodSpec.methodBuilder("update" + StringUtils.capitalize(entityName))
+                .addJavadoc("API更新方法\n")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(annotationControllerMapping("PutMapping", null))
+                .returns(
+                    ParameterizedTypeName.get(
+                        ClassName.get("reactor.core.publisher", "Mono"),
+                        ClassName.get(String.format("%s.%s", packageName, "entity"), entityName)
+                    )
+                )
+                .addParameter(className("entity", StringUtils.capitalize(item.getTableName())), item.getTableName() + "Dto")
+                .addException(Exception.class)
+                .addStatement(
+                    "$T $L = $L.findById($L).orElseThrow(() -> new Exception($S))",
+                    className("entity", item.getTableName()),
+                    item.getTableName(),
+                    repositoryFieldName,
+                    item.getTableName() + "Dto.getId()",
+                    "要更新的对象不存在或者已经被删除"
+                );
+            columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
+                if (!"id".equals(column.getColumnName())) {
+                    updateBuilder.addStatement(
+                        "$L.set$L($L.get$L())",
+                        item.getTableName(),
+                        toCamelCase(column.getColumnName()),
+                        item.getTableName() + "Dto",
+                        toCamelCase(column.getColumnName())
+                    );
+                }
+            });
+
+            updateBuilder.addStatement("$T saved = $L.save($L)",
+                className("entity", entityName),
+                repositoryFieldName,
+                item.getTableName()
+            );
+            updateBuilder.addStatement("return $T.just($L)",
+                ClassName.get("reactor.core.publisher", "Mono"),
+                "saved"
+            );
+
+            controllerBuilder.addMethod(updateBuilder.build());
+
+            // 表单更新
+            controllerBuilder.addMethod(
+                MethodSpec.methodBuilder("update" + StringUtils.capitalize(entityName))
+                    .addJavadoc("HTML表单更新方法\n")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(annotationControllerMapping("PutMapping", "/{id}"))
+                    .addParameter(
+                        ParameterSpec.builder(Long.class, "id")
+                            .addAnnotation(annotationSpecPathVariable())
+                            .build()
+                    )
+                    .build()
+            );
+
+            // 获取
+            controllerBuilder.addMethod(
+                MethodSpec.methodBuilder("get" + StringUtils.capitalize(entityName))
+                    .addAnnotation(annotationControllerMapping("GetMapping", "/{id}"))
+                    .build()
+            );
 
             TypeSpec typeSpec = controllerBuilder.build();
 
