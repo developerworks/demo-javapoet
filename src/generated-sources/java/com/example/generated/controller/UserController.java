@@ -2,7 +2,13 @@ package com.example.generated.controller;
 
 import com.example.generated.entity.User;
 import com.example.generated.repository.UserRepository;
+import java.lang.Exception;
+import java.lang.Long;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,16 +20,29 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/user")
 public class UserController {
-    private UserRepository UserRepository;
+    private UserRepository userRepository;
 
     @Autowired
-    public void setUserRepository(UserRepository UserRepository) {
-        this.UserRepository = UserRepository;
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @PostMapping
     public Mono<User> createUser(User userDto) {
         User user = new User();
+        user.setName(userDto.getName());
+        user.setCreatedAt(userDto.getCreatedAt());
+        User saved = userRepository.save(user);
+        return Mono.just(saved);
+    }
+
+    @DeleteMapping("/{id}")
+    @Transactional(
+            propagation = Propagation.REQUIRED
+    )
+    public Mono<User> deleteUser(@PathVariable Long id) throws Exception {
+        User user = userRepository.findById(id).orElseThrow(() -> new Exception("对象不存在"));
+        userRepository.delete(user);
         return Mono.just(user);
     }
 }

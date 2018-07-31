@@ -448,7 +448,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
     private void generateControllers() {
         baseTables.forEach(item -> {
             String entityName = CaseUtils.toCamelCase(item.getTableName(), true, '_');
-            String repositoryFieldName = CaseUtils.toCamelCase(String.format("%s_repository", item.getTableName()), true, '_');
+            String repositoryFieldName = CaseUtils.toCamelCase(String.format("%s_repository", item.getTableName()), false, '_');
             Class<?> repositoryClass = className("repository", item.getTableName() + "_repository");
 
             // 服务接口
@@ -459,14 +459,14 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                 .addAnnotation(annotationControllerMapping("RequestMapping", "/" + item.getTableName()))
                 .addField(
                     FieldSpec.builder(
-                        className("repository", item.getTableName() + "_repository"),
+                        repositoryClass,
                         repositoryFieldName,
                         Modifier.PRIVATE
                     ).build()
                 )
                 .addMethod(
                     MethodSpec
-                        .methodBuilder("set" + repositoryFieldName)
+                        .methodBuilder("set" + StringUtils.capitalize(repositoryFieldName))
                         .addAnnotation(annotationAutowired())
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(repositoryClass, repositoryFieldName)
@@ -475,31 +475,98 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                 )
                 .addModifiers(Modifier.PUBLIC);
 
-            controllerBuilder.addMethod(
-                MethodSpec.methodBuilder("create" + StringUtils.capitalize(entityName))
-                    .addAnnotation(annotationControllerMapping("PostMapping", null))
-                    .addModifiers(Modifier.PUBLIC)
-                    .addParameter(className("entity", StringUtils.capitalize(item.getTableName())), item.getTableName() + "Dto")
-                    .returns(
-                        ParameterizedTypeName.get(
-                            ClassName.get("reactor.core.publisher", "Mono"),
-                            ClassName.get(String.format("%s.%s", packageName, "entity"), entityName)
-                        )
+
+            MethodSpec.Builder createBuilder = MethodSpec.methodBuilder("create" + toCamelCase(entityName))
+                .addAnnotation(annotationControllerMapping("PostMapping", null))
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(className("entity", StringUtils.capitalize(item.getTableName())), item.getTableName() + "Dto")
+                .returns(
+                    ParameterizedTypeName.get(
+                        ClassName.get("reactor.core.publisher", "Mono"),
+                        ClassName.get(String.format("%s.%s", packageName, "entity"), entityName)
                     )
-                    .addStatement(
-                        "$T $L = new $T()",
-                        className("entity", StringUtils.capitalize(item.getTableName())),
+                );
+
+            createBuilder
+                .addStatement(
+                    "$T $L = new $T()",
+                    className("entity", StringUtils.capitalize(item.getTableName())),
+                    item.getTableName(),
+                    className("entity", StringUtils.capitalize(item.getTableName()))
+                );
+
+            columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
+                if (!"id".equals(column.getColumnName())) {
+                    createBuilder.addStatement(
+                        "$L.set$L($L.get$L())",
                         item.getTableName(),
-                        className("entity", StringUtils.capitalize(item.getTableName()))
-                    )
-                    .addStatement("return $T.just($L)", ClassName.get("reactor.core.publisher", "Mono"), item.getTableName())
-                    .build()
-            );
-//            controllerBuilder.addMethod(
-//                MethodSpec.methodBuilder("delete" + StringUtils.capitalize(entityName))
-//                    .addAnnotation(annotationControllerMapping("DeleteMapping"))
-//                    .build()
-//            );
+                        toCamelCase(column.getColumnName()),
+                        item.getTableName() + "Dto",
+                        toCamelCase(column.getColumnName())
+                    );
+                }
+
+            });
+
+            createBuilder
+                .addStatement("$T saved = $L.save($L)",
+                    className("entity", entityName),
+                    repositoryFieldName,
+                    item.getTableName()
+                )
+                .addStatement("return $T.just($L)",
+                    ClassName.get("reactor.core.publisher", "Mono"),
+                    "saved"
+                );
+            MethodSpec createMethodSpec = createBuilder.build();
+
+            // 创建
+            controllerBuilder.addMethod(createMethodSpec);
+
+            // 删除
+            try {
+                controllerBuilder.addMethod(
+                    MethodSpec.methodBuilder("delete" + toCamelCase(entityName))
+                        .addAnnotation(annotationControllerMapping("DeleteMapping", "/{id}"))
+                        // @Transactional(propagation = Propagation.REQUIRED)
+                        .addAnnotation(
+                            AnnotationSpec.builder(ClassName.get("org.springframework.transaction.annotation", "Transactional"))
+//                                .addMember("propagation", "$L.REQUIRED", "Propagation.REQUIRED")
+                                .addMember(
+                                    "propagation",
+                                    CodeBlock.builder().add("$T.REQUIRED", Class.forName("org.springframework.transaction.annotation.Propagation")).build()
+                                )
+                                .build()
+                        )
+                        .addModifiers(Modifier.PUBLIC)
+                        .returns(
+                            ParameterizedTypeName.get(
+                                ClassName.get("reactor.core.publisher", "Mono"),
+                                ClassName.get(String.format("%s.%s", packageName, "entity"), entityName)
+                            )
+                        )
+                        .addParameter(
+                            ParameterSpec.builder(Long.class, "id")
+                                .addAnnotation(annotationSpecPathVariable())
+                                .build()
+                        )
+                        .addException(Exception.class)
+                        .addStatement(
+                            "$T $L = $L.findById(id).orElseThrow(() -> new Exception($S))",
+                            className("entity", item.getTableName()),
+                            item.getTableName(),
+                            repositoryFieldName,
+                            "对象不存在"
+                        )
+                        .addStatement("$L.delete($L)", repositoryFieldName, item.getTableName())
+                        .addStatement("return $T.just($L)",
+                            ClassName.get("reactor.core.publisher", "Mono"),
+                            item.getTableName()                    )
+                        .build()
+                );
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
 //            controllerBuilder.addMethod(
 //                MethodSpec.methodBuilder("update" + StringUtils.capitalize(entityName))
 //                    .addAnnotation(annotationControllerMapping("PutMapping"))
@@ -637,7 +704,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
         this.applicationContext = applicationContext;
     }
 
-//    private TypeSpec.Builder autowired(TypeSpec.Builder builder, String repositoryFieldName) {
+    //    private TypeSpec.Builder autowired(TypeSpec.Builder builder, String repositoryFieldName) {
 //        builder.addField(
 //            FieldSpec.builder(
 //                className("repository", item.getTableName() + "_repository"),
@@ -655,4 +722,11 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
 //                    .build()
 //            )
 //    }
+    private String toCamelCase(String name) {
+        return CaseUtils.toCamelCase(name, true, '_');
+    }
+
+    private AnnotationSpec annotationSpecPathVariable() {
+        return AnnotationSpec.builder(ClassName.get("org.springframework.web.bind.annotation", "PathVariable")).build();
+    }
 }
