@@ -5,6 +5,7 @@ import com.example.demojavapoet.entity.VTables;
 import com.example.demojavapoet.repository.ColumnsRepository;
 import com.example.demojavapoet.repository.TablesRepository;
 import com.example.demojavapoet.util.AnnotationSpecUtils;
+import com.example.demojavapoet.util.TableType;
 import com.squareup.javapoet.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.CaseUtils;
@@ -19,9 +20,11 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.lang.NonNullApi;
 import org.springframework.util.StringUtils;
 
 import javax.lang.model.element.Modifier;
+import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -697,7 +700,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
      * Get base table from database
      */
     private void getBaseTables() {
-        baseTables = tablesRepository.fetchAll(databaseName, "BASE TABLE");
+        baseTables = tablesRepository.fetchAll(databaseName, TableType.BASE_TABLE);
     }
 
     private Class<?> className(String subPackageName, String tableName) {
@@ -742,13 +745,5 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
 
     private String toCamelCaseFirstLower(String name) {
         return CaseUtils.toCamelCase(name, false, '_');
-    }
-
-    private void generateIdClass() {
-
-    }
-
-    private void generateEmbeddable() {
-
     }
 }
