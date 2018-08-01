@@ -12,4 +12,7 @@ public interface ColumnsRepository extends JpaRepository<VColumns, Long> {
 
     @Query(nativeQuery = true, value = "SELECT * FROM v_columns WHERE TABLE_SCHEMA = ?1 AND TABLE_NAME = ?2")
     List<VColumns> fetchAll(String dbName, String tableName);
+
+    @Query(nativeQuery = true, value = "SELECT * FROM v_columns WHERE TABLE_SCHEMA = ?1 AND TABLE_NAME = ?2 AND COLUMN_KEY = 'PRI'")
+    List<VColumns> getPrimaryKeyNames(String dbName, String tableName);
 }

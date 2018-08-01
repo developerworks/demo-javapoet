@@ -1,5 +1,6 @@
 package com.example.demojavapoet;
 
+import com.example.demojavapoet.entity.VColumns;
 import com.example.demojavapoet.entity.VTables;
 import com.example.demojavapoet.repository.ColumnsRepository;
 import com.example.demojavapoet.repository.TablesRepository;
@@ -10,7 +11,6 @@ import org.apache.commons.text.CaseUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ApplicationContext;
@@ -34,12 +34,12 @@ import java.util.stream.IntStream;
 @Slf4j
 public class DemoJavapoetApplication implements ApplicationContextAware {
 
-    private static final String INDENT = "    ";
-    private static final File resourcesDirectory = new File("src/generated-sources/java");
-    private static final String packageName = "com.example.generated";
-    private static final String databaseName = "gold_game";
+    public static final String INDENT = "    ";
+    public static final File resourcesDirectory = new File("src/generated-sources/java");
+    public static final String packageName = "com.example.generated";
+    private static final String databaseName = "gold_dev";
 
-    private Map<String, String> dataTypes = new HashMap<>();
+    public static Map<String, String> dataTypes = new HashMap<>();
 
     private TablesRepository tablesRepository;
     private ColumnsRepository columnsRepository;
@@ -58,14 +58,6 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
     }
 
     public static void main(String[] args) {
-        ConfigurableApplicationContext ctx = new SpringApplicationBuilder(DemoJavapoetApplication.class)
-            .run();
-//        SpringApplication.run(DemoJavapoetApplication.class, args);
-    }
-
-    @Bean
-    CommandLineRunner commandLineRunner() {
-
         // Mysql to Java
         dataTypes.put("bigint", "java.lang.Long");
         dataTypes.put("binary", "java.lang.Byte");
@@ -85,6 +77,13 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
         dataTypes.put("timestamp", "java.sql.Timestamp");
         dataTypes.put("tinyint", "java.lang.Byte");
         dataTypes.put("varchar", "java.lang.String");
+        ConfigurableApplicationContext ctx = new SpringApplicationBuilder(DemoJavapoetApplication.class)
+            .run();
+//        SpringApplication.run(DemoJavapoetApplication.class, args);
+    }
+
+    @Bean
+    CommandLineRunner commandLineRunner() {
 
         // FIXME:有依赖关系, Service 类中依赖实体类, 需要CLASSPATH中存在对应的 $Type.class 文件才能生成服务类.
         // FIXME:服务实现依赖服务接口
@@ -96,9 +95,9 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
             generateEntities();
             // todo: 生成 Dto 数据传输对象
             // 生成服务接口
-            generateServices();
+//            generateServices();
             // 生成数据访问接口
-            generateRepositories();
+//            generateRepositories();
             // 生成服务实现类
             // todo: 生成动态分页查询代码
 //            generateServiceImpls();
@@ -106,72 +105,104 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
             // TODO: 生成测试代码
             // TODO: 生成 Ant design CRUD 代码(PC端和移动端)
 
-            generateControllers();
+//            generateControllers();
 
-            SpringApplication.exit(this.applicationContext, () -> 0);
+//            SpringApplication.exit(this.applicationContext, () -> 0);
 
         };
     }
 
     private void generateEntities() {
+        log.info(">>> 生成实体类...");
         baseTables.forEach(item -> {
             // 实体注解
             List<AnnotationSpec> annotationSpecList = AnnotationSpecUtils.entityAnnotations();
             // 实体字段
             List<FieldSpec> fieldSpecs = new ArrayList<>();
+
+            // 获取主键名称
+            log.info("当前数据库: {}, 表: {}", databaseName, item.getTableName());
+            List<VColumns> primaryKeys = columnsRepository.getPrimaryKeyNames(databaseName, item.getTableName());
+
+            if (primaryKeys.size() == 0) {
+                log.error("当前数据库表 {} 没有主键, 终止生成...");
+                return;
+            } else {
+                primaryKeys.forEach(column -> {
+                    log.info("主键列: {}", column.getColumnName());
+                });
+            }
             // 填充字段
             columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
-                FieldSpec fieldSpec = null;
+                FieldSpec.Builder fieldSpecBuiler = null;
                 try {
-                    if ("id".equals(column.getColumnName())) {
+                    // 主键列
+                    if ("PRI".equals(column.getColumnKey())) {
                         AnnotationSpec id = AnnotationSpec.builder(ClassName.get("javax.persistence", "Id")).build();
+
                         AnnotationSpec generatedValue = AnnotationSpec
                             .builder(ClassName.get("javax.persistence", "GeneratedValue"))
-//                            .addMember("strategy", "$T.$L", Class.forName("javax.persistence.GenerationType"), "IDENTITY")
                             .addMember(
                                 "strategy",
                                 CodeBlock.builder().add("$T.IDENTITY", Class.forName("javax.persistence.GenerationType")).build()
                             )
                             .build();
 
-                        fieldSpec = FieldSpec
+                        fieldSpecBuiler = FieldSpec
+                            .builder(
+                                Class.forName(dataTypes.get(column.getDataType())),
+                                CaseUtils.toCamelCase(column.getColumnName(), false, '_'),
+                                Modifier.PRIVATE
+                            );
+                        if (primaryKeys.size() == 1) {
+                            fieldSpecBuiler
+                                .addAnnotation(id)
+                                .addAnnotation(generatedValue);
+                        } else {
+                            fieldSpecBuiler.addAnnotation(id);
+                        }
+                        fieldSpecBuiler.addAnnotation(AnnotationSpecUtils.jpaColumnAnnotation(column.getColumnName()));
+                    }
+                    // TODO: UNIQUE 列
+                    // 非主键列
+                    else {
+                        fieldSpecBuiler = FieldSpec
                             .builder(
                                 Class.forName(dataTypes.get(column.getDataType())),
                                 CaseUtils.toCamelCase(column.getColumnName(), false, '_'),
                                 Modifier.PRIVATE
                             )
-                            .addAnnotation(id)
-                            .addAnnotation(generatedValue)
-                            .addAnnotation(AnnotationSpecUtils.jpaColumnAnnotation(column.getColumnName()))
-                            .build();
-                    } else {
-//                        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}", column.getDataType());
-                        fieldSpec = FieldSpec
-                            .builder(
-                                Class.forName(dataTypes.get(column.getDataType())),
-                                CaseUtils.toCamelCase(column.getColumnName(), false, '_'),
-                                Modifier.PRIVATE
-                            )
-                            .addAnnotation(AnnotationSpecUtils.jpaColumnAnnotation(column.getColumnName()))
-                            .build();
+                            .addAnnotation(AnnotationSpecUtils.jpaColumnAnnotation(column.getColumnName()));
                     }
 
                 } catch (ClassNotFoundException e) {
                     e.printStackTrace();
                 }
+
+                FieldSpec fieldSpec = fieldSpecBuiler.build();
+
+                // 生成额外的复合组件类
+                if (primaryKeys.size() > 1) {
+                    AnnotationSpecUtils.createIdClass(toCamelCase(item.getTableName()) + "PK", primaryKeys);
+                }
+
                 fieldSpecs.add(fieldSpec);
             });
             // JPA实体
             // TODO: Use google case formatter to convert snake case to camel case
-            TypeSpec typeSpec = TypeSpec.classBuilder(
-                CaseUtils.toCamelCase(item.getTableName(), true, '_')
-            )
+            TypeSpec.Builder typeSpecBuilder = TypeSpec
+                .classBuilder(CaseUtils.toCamelCase(item.getTableName(), true, '_'))
                 .addJavadoc("Generated by javapoet\n")
                 .addAnnotations(annotationSpecList)
                 .addAnnotation(AnnotationSpecUtils.jpaTableAnnotation(item.getTableName()))
                 .addModifiers(Modifier.PUBLIC)
-                .addFields(fieldSpecs)
-                .build();
+                .addFields(fieldSpecs);
+
+            if (primaryKeys.size() > 1) {
+                typeSpecBuilder.addAnnotation(AnnotationSpecUtils.idClass(toCamelCase(item.getTableName()) + "PK.class"));
+            }
+
+            TypeSpec typeSpec = typeSpecBuilder.build();
             JavaFile javaFile = JavaFile.builder(String.format("%s.entity", packageName), typeSpec).indent(INDENT).build();
             try {
                 javaFile.writeTo(resourcesDirectory);
@@ -447,12 +478,23 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
     }
 
     private void generateControllers() {
+        log.info(">>> 生成控制器...");
         baseTables.forEach(item -> {
             String entityName = CaseUtils.toCamelCase(item.getTableName(), true, '_');
             log.info("Controller name: {}", entityName + "Controller");
             String repositoryFieldName = CaseUtils.toCamelCase(
                 String.format("%s_repository", item.getTableName()), false, '_'
             );
+            // 获取主键名称
+            log.info("当前数据库: {}, 表: {}", databaseName, item.getTableName());
+            List<VColumns> primaryKeys = columnsRepository.getPrimaryKeyNames(databaseName, item.getTableName());
+            log.info("主键: {}", primaryKeys);
+
+            if (primaryKeys.size() == 0) {
+                log.error("当前数据库表 {} 没有主键, 终止生成...");
+                return;
+            }
+
             Class<?> repositoryClass =
                 className("repository", item.getTableName() + "_repository");
 
@@ -480,11 +522,13 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                 )
                 .addModifiers(Modifier.PUBLIC);
 
+            // create$T
             MethodSpec.Builder createBuilder = MethodSpec.methodBuilder("create" + toCamelCase(entityName))
                 .addAnnotation(AnnotationSpecUtils.controllerMapping("PostMapping", null))
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(
-                    className("entity", item.getTableName()), item.getTableName() + "Dto"
+                    className("entity", item.getTableName()), toCamelCaseFirstLower(item.getTableName()) + "Dto"
+
                 )
                 .returns(
                     ParameterizedTypeName.get(
@@ -495,17 +539,17 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
             createBuilder
                 .addStatement(
                     "$T $L = new $T()",
-                    className("entity", StringUtils.capitalize(item.getTableName())),
-                    item.getTableName(),
-                    className("entity", StringUtils.capitalize(item.getTableName()))
+                    className("entity", item.getTableName()),
+                    toCamelCaseFirstLower(item.getTableName()),
+                    className("entity", item.getTableName())
                 );
             columnsRepository.fetchAll(databaseName, item.getTableName()).forEach(column -> {
                 if (!"id".equals(column.getColumnName())) {
                     createBuilder.addStatement(
                         "$L.set$L($L.get$L())",
-                        item.getTableName(),
+                        toCamelCaseFirstLower(item.getTableName()),
                         toCamelCase(column.getColumnName()),
-                        item.getTableName() + "Dto",
+                        toCamelCaseFirstLower(item.getTableName()) + "Dto",
                         toCamelCase(column.getColumnName())
                     );
                 }
@@ -514,7 +558,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                 .addStatement("$T saved = $L.save($L)",
                     className("entity", item.getTableName()),
                     repositoryFieldName,
-                    item.getTableName()
+                    toCamelCaseFirstLower(item.getTableName())
                 )
                 .addStatement("return $T.just($L)",
                     ClassName.get("reactor.core.publisher", "Mono"),
@@ -524,10 +568,10 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
             // 创建
             controllerBuilder.addMethod(createMethodSpec);
 
-            // 删除
+            // delete$T
             try {
                 controllerBuilder.addMethod(
-                    MethodSpec.methodBuilder("delete" + toCamelCase(entityName))
+                    MethodSpec.methodBuilder("delete" + toCamelCase(item.getTableName()))
                         .addAnnotation(AnnotationSpecUtils.controllerMapping("DeleteMapping", "/{id}"))
                         .addAnnotation(
                             AnnotationSpec.builder(ClassName.get("org.springframework.transaction.annotation", "Transactional"))
@@ -553,14 +597,18 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                         .addStatement(
                             "$T $L = $L.findById(id).orElseThrow(() -> new Exception($S))",
                             className("entity", item.getTableName()),
-                            item.getTableName(),
+                            toCamelCaseFirstLower(item.getTableName()),
                             repositoryFieldName,
                             "对象不存在"
                         )
-                        .addStatement("$L.delete($L)", repositoryFieldName, item.getTableName())
+                        .addStatement(
+                            "$L.delete($L)",
+                            repositoryFieldName,
+                            toCamelCaseFirstLower(item.getTableName())
+                        )
                         .addStatement("return $T.just($L)",
                             ClassName.get("reactor.core.publisher", "Mono"),
-                            item.getTableName()
+                            toCamelCaseFirstLower(item.getTableName())
                         )
                         .build()
                 );
@@ -653,13 +701,11 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
     }
 
     private Class<?> className(String subPackageName, String tableName) {
-        log.info("<<<<<<<<<<<<<<<< tableName: {}", tableName);
         Class<?> class1 = null;
         try {
             String className = String.format("%s.%s.%s", packageName, subPackageName,
                 CaseUtils.toCamelCase(tableName, true, '_')
             );
-            log.info(">>>>>>> Class.forName {}", className);
             class1 = Class.forName(className);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
@@ -685,30 +731,11 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
             .build();
     }
 
-
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
     }
 
-    //    private TypeSpec.Builder autowired(TypeSpec.Builder builder, String repositoryFieldName) {
-//        builder.addField(
-//            FieldSpec.builder(
-//                className("repository", item.getTableName() + "_repository"),
-//                repositoryFieldName,
-//                Modifier.PRIVATE
-//            ).build()
-//        )
-//            .addMethod(
-//                MethodSpec
-//                    .methodBuilder("set" + repositoryFieldName)
-//                    .addAnnotation(autowired())
-//                    .addModifiers(Modifier.PUBLIC)
-//                    .addParameter(repositoryClass, repositoryFieldName)
-//                    .addStatement("this.$L = $L", repositoryFieldName, repositoryFieldName)
-//                    .build()
-//            )
-//    }
     private String toCamelCase(String name) {
         return CaseUtils.toCamelCase(name, true, '_');
     }
@@ -717,4 +744,11 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
         return CaseUtils.toCamelCase(name, false, '_');
     }
 
+    private void generateIdClass() {
+
+    }
+
+    private void generateEmbeddable() {
+
+    }
 }

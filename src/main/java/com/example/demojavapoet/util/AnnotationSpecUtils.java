@@ -1,9 +1,12 @@
 package com.example.demojavapoet.util;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.example.demojavapoet.DemoJavapoetApplication;
+import com.example.demojavapoet.entity.VColumns;
+import com.squareup.javapoet.*;
+import org.apache.commons.text.CaseUtils;
 
+import javax.lang.model.element.Modifier;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +16,7 @@ public class AnnotationSpecUtils {
             .builder(ClassName.get("org.springframework.web.bind.annotation", "PathVariable"))
             .build();
     }
+
     public static AnnotationSpec createJpaEntityAnnotation() {
         return AnnotationSpec.builder(ClassName.get("javax.persistence", "Entity")).build();
     }
@@ -78,5 +82,55 @@ public class AnnotationSpecUtils {
             builder.addMember("value", "$S", path);
         }
         return builder.build();
+    }
+
+    public static AnnotationSpec idClass(String pkClassName) {
+        return AnnotationSpec
+            .builder(ClassName.get("javax.persistence", "IdClass"))
+            .addMember("value", "$L", pkClassName)
+            .build();
+    }
+
+    public static void createIdClass(String className, List<VColumns> columns) {
+        // IdClass 字段集合
+        List<FieldSpec> fieldSpecs = new ArrayList<>();
+        columns.forEach(column -> {
+            FieldSpec fieldSpec = null;
+            try {
+                fieldSpec = FieldSpec.builder(
+                    Class.forName(DemoJavapoetApplication.dataTypes.get(column.getDataType())),
+                    CaseUtils.toCamelCase(column.getColumnName(), false, '_'),
+                    Modifier.PRIVATE
+                ).build();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            fieldSpecs.add(fieldSpec);
+        });
+
+        List<AnnotationSpec> annotationSpecs = new ArrayList<>();
+        String[] annotations = "Getter,EqualsAndHashCode,NoArgsConstructor,AllArgsConstructor".split(",");
+        for (String annotation : annotations) {
+            annotationSpecs.add(
+                AnnotationSpec.builder(ClassName.get("lombok", annotation)).build()
+            );
+        }
+
+        TypeSpec typeSpec = TypeSpec
+            .classBuilder(className)
+            .addAnnotations(annotationSpecs)
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(
+                ClassName.get("java.io", "Serializable")
+            )
+            .addFields(fieldSpecs)
+            .build();
+
+        JavaFile javaFile = JavaFile.builder(String.format("%s.entity", DemoJavapoetApplication.packageName), typeSpec).indent(DemoJavapoetApplication.INDENT).build();
+        try {
+            javaFile.writeTo(DemoJavapoetApplication.resourcesDirectory);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
