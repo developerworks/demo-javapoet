@@ -5,6 +5,7 @@ import com.example.demojavapoet.entity.VTables;
 import com.example.demojavapoet.repository.ColumnsRepository;
 import com.example.demojavapoet.repository.TablesRepository;
 import com.example.demojavapoet.util.AnnotationSpecUtils;
+import com.example.demojavapoet.util.JpaAnnotationUtils;
 import com.example.demojavapoet.util.TableType;
 import com.squareup.javapoet.*;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,7 @@ import org.apache.commons.text.CaseUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ApplicationContext;
@@ -20,11 +22,9 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.lang.NonNullApi;
 import org.springframework.util.StringUtils;
 
 import javax.lang.model.element.Modifier;
-import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -98,19 +98,19 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
             generateEntities();
             // todo: 生成 Dto 数据传输对象
             // 生成服务接口
-//            generateServices();
+            generateServices();
             // 生成数据访问接口
-//            generateRepositories();
+            generateRepositories();
             // 生成服务实现类
             // todo: 生成动态分页查询代码
-//            generateServiceImpls();
+            generateServiceImpls();
             // TODO: 生成 Webflux Rest Api 控制器类
             // TODO: 生成测试代码
             // TODO: 生成 Ant design CRUD 代码(PC端和移动端)
 
-//            generateControllers();
+            generateControllers();
 
-//            SpringApplication.exit(this.applicationContext, () -> 0);
+            SpringApplication.exit(this.applicationContext, () -> 0);
 
         };
     }
@@ -141,15 +141,15 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                 try {
                     // 主键列
                     if ("PRI".equals(column.getColumnKey())) {
-                        AnnotationSpec id = AnnotationSpec.builder(ClassName.get("javax.persistence", "Id")).build();
-
-                        AnnotationSpec generatedValue = AnnotationSpec
-                            .builder(ClassName.get("javax.persistence", "GeneratedValue"))
-                            .addMember(
-                                "strategy",
-                                CodeBlock.builder().add("$T.IDENTITY", Class.forName("javax.persistence.GenerationType")).build()
-                            )
-                            .build();
+                        AnnotationSpec id = JpaAnnotationUtils.id();
+//                        AnnotationSpec generatedValue = AnnotationSpec
+//                            .builder(ClassName.get("javax.persistence", "GeneratedValue"))
+//                            .addMember(
+//                                "strategy",
+//                                CodeBlock.builder().add("$T.IDENTITY", Class.forName("javax.persistence.GenerationType")).build()
+//                            )
+//                            .build();
+                        AnnotationSpec generatedValue = JpaAnnotationUtils.generatedValue("IDENTITY");
 
                         fieldSpecBuiler = FieldSpec
                             .builder(
@@ -159,7 +159,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
                             );
                         if (primaryKeys.size() == 1) {
                             fieldSpecBuiler
-                                .addAnnotation(id)
+                                .addAnnotation(JpaAnnotationUtils.id())
                                 .addAnnotation(generatedValue);
                         } else {
                             fieldSpecBuiler.addAnnotation(id);
@@ -300,7 +300,7 @@ public class DemoJavapoetApplication implements ApplicationContextAware {
 
             // 更新方法
             MethodSpec.Builder updateBuilder = MethodSpec
-                .methodBuilder("update" + item.getTableName())
+                .methodBuilder("update" + toCamelCase(item.getTableName()))
                 .addJavadoc("更新对象\n")
                 .addAnnotation(AnnotationSpecUtils.override())
                 .addModifiers(Modifier.PUBLIC)
